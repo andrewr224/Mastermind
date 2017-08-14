@@ -40,6 +40,7 @@ class Game
   def play
     take_turn until @master.game_over?
     @master.show_board
+    @robot.speak
   end
 
   # one need to take turns
@@ -49,6 +50,7 @@ class Game
     puts Mastermind.show_colors.join(", ")
 
     @master.guess(@codebreaker.enter_colors)
+    @robot.get_the_score(@master.score) if @codebreaker == @robot
   end
 end
 
@@ -56,11 +58,14 @@ end
 class Mastermind
   # map of colors
   @@colors = ["red", "green", "blue", "yellow", "brown", "orange", "black", "white"]
+
+  attr_reader :score
   def initialize(code)
     @code = code
     @turns = 0
     @the_board = []
     @last_guess = []
+    @score = []
   end
 
   def show_board
@@ -123,8 +128,8 @@ class Mastermind
       if code.include?(user_guesses[i])
         score << "-"
         color = user_guesses[i]
-        user_guesses.delete(color)
-        code.delete(color)
+        user_guesses.delete_at(user_guesses.index(color))
+        code.delete_at(code.index(color))
       else
         i += 1
       end
@@ -134,6 +139,7 @@ class Mastermind
       score << "o"
     end
 
+    @score = score
     add_to_the_board(input, score)
   end
 
@@ -152,32 +158,69 @@ end
 class Robot
   def initialize(name)
     @name = name
-    puts "#{@name} represents the robots today"
+    @vocabulary = ["(chirps his excitement)", "(beeps)", "(chirps confidently)", "bleep bleep bloop", "bleep blopp beep beep", "beep beep"]
+    @hits = 0
+    @guesses = []
+    @guessing_sequence = [*0..7].shuffle
+    puts "Your opponent is #{@name}"
+    speak
   end
 
   def to_s
     @name
   end
 
+  def speak
+    puts "#{@name} - #{@vocabulary.sample}"
+  end
+
   # method for guessting colors
   def enter_colors
-    colors = []
-    4.times do
-      colors << Mastermind.show_colors[rand(0..7)]
-    end
-    # sleep 1
-    puts "#{@name} picked #{colors.join(", ")}"
-    colors
+    speak
+    guess
+  end
+
+  # takes the score for analysis
+  def get_the_score(score)
+    score = score.dup
+    score.delete("o")
+    @hits = score.length
   end
 
   # creates a code for human to guess
   def create_code
-    puts "Beeps"
+    speak
     code = []
     4.times do
       code << Mastermind.show_colors[rand(0..7)]
     end
     code
+  end
+
+  private
+  # analyzes the last move
+  def analyze
+    @hits.times do
+      @guesses << @last_guess unless @guesses.length == 4
+    end
+  end
+
+  def guess
+    analyze
+
+    colors = []
+    unless @guesses.length == 4
+      guess = @guessing_sequence.pop
+      4.times do
+        colors << Mastermind.show_colors[guess]
+      end
+      @last_guess = colors[0]
+    else
+      colors = @guesses.shuffle
+    end
+
+    puts "#{@name} picked #{colors.join(", ")}"
+    colors
   end
 end
 
